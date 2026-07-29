@@ -1,0 +1,15 @@
+#pragma once
+
+#include "/Engine/Pulic/Platfrom.ush"
+
+RWTexture3D<float> OutVolume;
+uint Resolution;
+
+[numthreads(4, 4, 4)]
+void BloodField(uint3 DispatchThreadID : SV_DispatchThreadID)
+{
+    if (any(DispatchThreadID >= Resolution))
+        return;
+    
+    OutVolume[DispatchThreadID] = 0.f;
+}

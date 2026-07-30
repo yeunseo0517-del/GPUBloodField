@@ -36,8 +36,9 @@ public class BloodFieldShaders : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
-				"Slate",
-				"SlateCore",
+				"RHI",
+				"RenderCore",
+				"Projects"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

@@ -11,6 +11,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "BloodFieldSubSystem.h"
+#include "BloodField/Public/BloodBurstRequest.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -121,8 +123,17 @@ void ABloodSurfaceResearchCharacter::SetupPlayerInputComponent(UInputComponent* 
 
 void ABloodSurfaceResearchCharacter::MakeBlood()
 {
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC || !BloodDecalMaterial) return;
+	APlayerController* PC = Cast < APlayerController>(GetController());
+	if (!PC) return;
+
+	UBloodFieldSubSystem* BloodFieldSubsystem = PC->GetLocalPlayer()->GetSubsystem <UBloodFieldSubSystem>();
+	if (!BloodFieldSubsystem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fail to Find Blood Field Subsystem"));
+		return;
+	}
+
+	FBloodBurstRequest Request;
 
 	FHitResult Hit;
 
@@ -134,20 +145,27 @@ void ABloodSurfaceResearchCharacter::MakeBlood()
 
 	if (!bHit) return;
 
-	const FVector SpawnLocation =
-		Hit.ImpactPoint + Hit.ImpactNormal * 1.f;
+	Request.WorldLocation = Hit.ImpactPoint;
+	Request.Radius = 50.f;
 
-	const FRotator SpawnRotation =
-		FRotationMatrix::MakeFromX(-Hit.ImpactNormal).Rotator();
+	BloodFieldSubsystem->RequestBloodSplat(Request);
+}
 
-	UGameplayStatics::SpawnDecalAtLocation(
-		GetWorld(),
-		BloodDecalMaterial,
-		FVector(70.f, 70.f, 70.f),
-		SpawnLocation,
-		SpawnRotation,
-		20.f
-	);
+void ABloodSurfaceResearchCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	APlayerController* PC = Cast < APlayerController>(GetController());
+	if (!PC) return;
+
+	UBloodFieldSubSystem* BloodFieldSubsystem = PC->GetLocalPlayer()->GetSubsystem <UBloodFieldSubSystem>();
+	if (!BloodFieldSubsystem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Fail to Find Blood Field Subsystem"));
+		return;
+	}
+
+	BloodFieldSubsystem->SetFieldOrigin(FVector3f(GetActorLocation()));
 }
 
 void ABloodSurfaceResearchCharacter::Move(const FInputActionValue& Value)

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "BloodFieldCS.h"
 
 IMPLEMENT_GLOBAL_SHADER(

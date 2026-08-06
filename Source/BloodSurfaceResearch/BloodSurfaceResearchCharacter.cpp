@@ -123,17 +123,15 @@ void ABloodSurfaceResearchCharacter::SetupPlayerInputComponent(UInputComponent* 
 
 void ABloodSurfaceResearchCharacter::MakeBlood()
 {
-	APlayerController* PC = Cast < APlayerController>(GetController());
-	if (!PC) return;
-
-	UBloodFieldSubSystem* BloodFieldSubsystem = PC->GetLocalPlayer()->GetSubsystem <UBloodFieldSubSystem>();
+	UBloodFieldSubSystem* BloodFieldSubsystem = GetWorld()->GetSubsystem <UBloodFieldSubSystem>();
 	if (!BloodFieldSubsystem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Fail to Find Blood Field Subsystem"));
 		return;
 	}
 
-	FBloodBurstRequest Request;
+	APlayerController* PC = Cast < APlayerController>(GetController());
+	if (!PC) return;
 
 	FHitResult Hit;
 
@@ -142,9 +140,10 @@ void ABloodSurfaceResearchCharacter::MakeBlood()
 		true,
 		Hit
 	);
-
 	if (!bHit) return;
 
+	FBloodBurstRequest Request;
+	Request.ImpactNormal = Hit.ImpactNormal;
 	Request.WorldLocation = Hit.ImpactPoint;
 	Request.Radius = 50.f;
 
@@ -155,10 +154,7 @@ void ABloodSurfaceResearchCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	APlayerController* PC = Cast < APlayerController>(GetController());
-	if (!PC) return;
-
-	UBloodFieldSubSystem* BloodFieldSubsystem = PC->GetLocalPlayer()->GetSubsystem <UBloodFieldSubSystem>();
+	UBloodFieldSubSystem* BloodFieldSubsystem = GetWorld()->GetSubsystem<UBloodFieldSubSystem>();
 	if (!BloodFieldSubsystem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Fail to Find Blood Field Subsystem"));

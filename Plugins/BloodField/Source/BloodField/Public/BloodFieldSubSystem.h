@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "SubSystems/LocalPlayerSubsystem.h"
+#include "BloodBurstRequest.h"
 #include "BloodFieldSubSystem.generated.h"
 
 UCLASS()
-class BLOODFIELD_API UBloodFieldSubSystem : public ULocalPlayerSubsystem
+class BLOODFIELD_API UBloodFieldSubSystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 	
@@ -16,12 +17,25 @@ public:
 	virtual void Deinitialize() override;
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
-	void RequestBloodSplat(struct FBloodBurstRequest Request);
+	virtual TStatId GetStatId() const override;
+	virtual void Tick(float DeltaTime) override;
+
+	void RequestBloodSplat(FBloodBurstRequest Request);
 	
 	void SetFieldOrigin(const FVector3f& InOrigin);
 	class UTextureRenderTargetVolume* GetBloodFieldTarget() const { return BloodFieldTarget; }
 
 private:
+	FBloodSplat CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y);
+	void FlushRequests();
+
+	bool bShouldFlushRequests = false;
+	int32 FramesSinceLastFlush = 0;
+	int32 FlushIntervalFrames = 1;
+
+	UPROPERTY()
+	TArray<FBloodSplat> BloodSplats;
+
 	UPROPERTY(Transient)
 	TObjectPtr<class UTextureRenderTargetVolume> BloodFieldTarget;
 

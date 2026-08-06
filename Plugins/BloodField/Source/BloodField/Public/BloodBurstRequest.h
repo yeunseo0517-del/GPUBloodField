@@ -8,15 +8,33 @@ struct FBloodBurstRequest
 {
 	GENERATED_BODY();
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY()
+	FVector ImpactNormal = FVector::ZeroVector;
+
+	UPROPERTY()
 	FVector WorldLocation = FVector::ZeroVector;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY()
 	FVector Direction = FVector::ForwardVector;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY()
 	float Radius = 50.f;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY()
+	float Strength = 1.f;
+};
+
+USTRUCT(BlueprintType)
+struct FBloodSplat
+{
+	GENERATED_BODY();
+	
+	UPROPERTY()
+	FVector WorldLocation = FVector::ZeroVector;
+
+	UPROPERTY()
+	float Radius = 50.f;
+
+	UPROPERTY()
 	float Strength = 1.f;
 };

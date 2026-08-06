@@ -20,11 +20,8 @@ ABloodFieldDebugActor::ABloodFieldDebugActor()
 void ABloodFieldDebugActor::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	APlayerController* PC = GetWorld()->GetFirstPlayerController();
-	if (!PC) return;
 
-	UBloodFieldSubSystem* BloodFieldSubsystem = PC->GetLocalPlayer()->GetSubsystem <UBloodFieldSubSystem>();
+	UBloodFieldSubSystem* BloodFieldSubsystem = GetWorld()->GetSubsystem <UBloodFieldSubSystem>();
 	if (!BloodFieldSubsystem)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Fail to Find Blood Field Subsystem"));

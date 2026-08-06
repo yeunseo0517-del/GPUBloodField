@@ -3,13 +3,20 @@
 
 #include "BloodFieldSubSystem.h"
 #include "Engine/TextureRenderTargetVolume.h"
-#include "BloodBurstRequest.h"
 #include "BloodFieldShaderInterface.h"
 
-//UTextureRenderTargetVolume 참조 보관
-//Resolution, Scale, Origin
-//혈흔이 생긴 Location, Radius
-//초기화할 때 또는 피격될 때 셰이더 실행 요청
+namespace
+{
+	constexpr int32 PatternMask[5][5] =
+	{
+		{ 0, 1, 0, 0, 0 },
+		{ 1, 1, 1, 0, 0 },
+		{ 0, 1, 1, 1, 1 },
+		{ 0, 0, 1, 0, 0 }
+	};
+
+	constexpr int32 offset = 0.5;
+}
 
 void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -45,7 +52,71 @@ bool UBloodFieldSubSystem::ShouldCreateSubsystem(UObject* Outer) const
 	return Super::ShouldCreateSubsystem(Outer);
 }
 
+TStatId UBloodFieldSubSystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(
+		UBloodFieldSubsystem,
+		STATGROUP_Tickables
+	);
+}
+
+void UBloodFieldSubSystem::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bShouldFlushRequests)
+	{
+		++FramesSinceLastFlush;
+
+		if (FramesSinceLastFlush >= FlushIntervalFrames)
+		{
+			FlushRequests();
+			FramesSinceLastFlush = 0;
+		}
+	}
+}
+
 void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
+{
+	if (!bShouldFlushRequests) bShouldFlushRequests = true;
+
+	for (int i = 0; i < 4; ++i)
+	{
+		for (int j = 0; j < 4; ++j)
+		{
+			if (PatternMask[i][j] == 1)
+			{
+				BloodSplats.Add(CalculateSplatLocation(Request, i, j));
+			}
+		}
+	}
+}
+
+void UBloodFieldSubSystem::SetFieldOrigin(const FVector3f& InOrigin)
+{
+	FieldOrigin = InOrigin;
+}
+
+FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y)
+{
+	FBloodSplat Splat;
+
+	FVector Normal = Request.ImpactNormal.GetSafeNormal();
+	FVector RefN = FVector::UpVector;
+	if (abs(FVector::DotProduct(Normal, RefN) > 0.99)) RefN = FVector::ForwardVector;
+	FVector Tangent = FVector::CrossProduct(Normal, RefN).GetSafeNormal();
+	FVector Bitangent = FVector::CrossProduct(Normal, Tangent).GetSafeNormal();
+
+	FVector Location = Request.WorldLocation + Tangent * (offset * (x - 2)) + Bitangent * (offset * (y - 2));
+
+	Splat.WorldLocation = Location;
+	Splat.Radius = Request.Radius;
+	Splat.Strength = Request.Strength;
+
+	return Splat;
+}
+
+void UBloodFieldSubSystem::FlushRequests()
 {
 	if (!BloodFieldTarget)
 	{
@@ -60,11 +131,13 @@ void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
 		UE_LOG(LogTemp, Warning, TEXT("Fail to Get Render Target Resource from Game Thread"));
 		return;
 	}
-	FBloodFieldShaderInterface::Dispatch(RT, static_cast<uint32>(Resolution), FieldScale, FieldOrigin, FVector3f(Request.WorldLocation), Request.Radius);
-}
 
-void UBloodFieldSubSystem::SetFieldOrigin(const FVector3f& InOrigin)
-{
-	FieldOrigin = InOrigin;
+	for (const auto& Splat : BloodSplats)
+	{
+		FBloodFieldShaderInterface::Dispatch(RT, static_cast<uint32>(Resolution), FieldScale, FieldOrigin, FVector3f(Splat.WorldLocation), Splat.Radius);
+	}
+
+	BloodSplats.Empty();
+	bShouldFlushRequests = false;
 }
 

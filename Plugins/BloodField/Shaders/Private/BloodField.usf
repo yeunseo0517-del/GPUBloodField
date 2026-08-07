@@ -21,5 +21,5 @@ void BloodField(uint3 DispatchThreadID : SV_DispatchThreadID)
     const float Distance = length(Position - Location);
     const float Mask = 1.0f - saturate(Distance / Radius);
     
-    OutVolume[DispatchThreadID] = Mask;
+    OutVolume[DispatchThreadID] += Mask;
 }

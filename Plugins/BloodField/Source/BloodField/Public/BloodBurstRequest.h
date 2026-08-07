@@ -33,7 +33,7 @@ struct FBloodSplat
 	FVector WorldLocation = FVector::ZeroVector;
 
 	UPROPERTY()
-	float Radius = 50.f;
+	float Radius = 0.5f;
 
 	UPROPERTY()
 	float Strength = 1.f;

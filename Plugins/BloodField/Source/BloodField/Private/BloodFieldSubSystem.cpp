@@ -4,18 +4,18 @@
 #include "BloodFieldSubSystem.h"
 #include "Engine/TextureRenderTargetVolume.h"
 #include "BloodFieldShaderInterface.h"
+#include "DrawDebugHelpers.h"
 
 namespace
 {
 	constexpr int32 PatternMask[5][5] =
 	{
-		{ 0, 1, 0, 0, 0 },
+		{ 0, 1, 0, 0, 1 },
 		{ 1, 1, 1, 0, 0 },
-		{ 0, 1, 1, 1, 1 },
-		{ 0, 0, 1, 0, 0 }
+		{ 0, 0, 1, 1, 1 },
+		{ 0, 0, 0, 1, 0 },
+		{ 0, 0, 0, 1, 0 }
 	};
-
-	constexpr int32 offset = 0.5;
 }
 
 void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -102,12 +102,40 @@ FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstReques
 	FBloodSplat Splat;
 
 	FVector Normal = Request.ImpactNormal.GetSafeNormal();
-	FVector RefN = FVector::UpVector;
-	if (abs(FVector::DotProduct(Normal, RefN) > 0.99)) RefN = FVector::ForwardVector;
-	FVector Tangent = FVector::CrossProduct(Normal, RefN).GetSafeNormal();
+	FVector ProjectedDirection = Request.Direction - FVector::DotProduct(Request.Direction, Normal) * Normal;
+
+	FVector Tangent = ProjectedDirection.GetSafeNormal();
+	if (ProjectedDirection == FVector::ZeroVector)
+	{
+		FVector RefN = FVector::UpVector;
+		if (abs(FVector::DotProduct(Normal, RefN)) > 0.99) RefN = FVector::ForwardVector;
+		Tangent = FVector::CrossProduct(Normal, RefN).GetSafeNormal();
+	}
 	FVector Bitangent = FVector::CrossProduct(Normal, Tangent).GetSafeNormal();
 
-	FVector Location = Request.WorldLocation + Tangent * (offset * (x - 2)) + Bitangent * (offset * (y - 2));
+	FVector Location = Request.WorldLocation + Tangent * (Request.Radius * (x - 2)) + Bitangent * (Request.Radius * (y - 2));
+
+	DrawDebugLine(
+		GetWorld(),
+		Request.WorldLocation,
+		Request.WorldLocation + Normal * 100.f,
+		FColor::Blue ,
+		false,
+		5.f,
+		0,
+		3.f
+	);
+	FHitResult Hit;
+	FVector Start = Location + Normal * 50.f;
+	FVector End = Location - Normal * 50.f;
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility);
+	if (bHit)
+	{
+		Location = Hit.ImpactPoint;
+	}
+	FVector v = (Location - Location + 10.f).GetSafeNormal();
+	DrawDebugLine(GetWorld(), Location, Location + v * 100.f, FColor::Green, false, 5.f);
+	//abs(FVector::DotProduct(Normal,
 
 	Splat.WorldLocation = Location;
 	Splat.Radius = Request.Radius;
@@ -134,6 +162,7 @@ void UBloodFieldSubSystem::FlushRequests()
 
 	for (const auto& Splat : BloodSplats)
 	{
+		DrawDebugSphere(GetWorld(), Splat.WorldLocation, Splat.Radius, 12, FColor::Red, false, 5.f);
 		FBloodFieldShaderInterface::Dispatch(RT, static_cast<uint32>(Resolution), FieldScale, FieldOrigin, FVector3f(Splat.WorldLocation), Splat.Radius);
 	}
 

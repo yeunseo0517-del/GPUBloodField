@@ -7,6 +7,13 @@
 #include "BloodBurstRequest.h"
 #include "BloodFieldSubSystem.generated.h"
 
+struct FSurfaceBasis
+{
+	FVector Normal;
+	FVector Tangent;
+	FVector Bitangent;
+};
+
 UCLASS()
 class BLOODFIELD_API UBloodFieldSubSystem : public UTickableWorldSubsystem
 {
@@ -28,6 +35,10 @@ public:
 private:
 	FBloodSplat CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y);
 	void FlushRequests();
+	bool DoTrace(FHitResult& Result, const FVector& StartLocation, const FVector& Dir, float EndDistance);
+	FSurfaceBasis BuildSurfaceBasis(const FBloodBurstRequest& Request);
+	FVector TryWrapSharpEdge(const FVector& Center, const FVector& ImpactPoint, const FVector& Offset, const FVector& NewNormal, const FVector& OldNormal);
+	FHitResult FindCloseDistanceNormal(const FHitResult& ResultA, const FHitResult& ResultB, const FVector& Origin, const FVector& OriginNormal);
 
 	bool bShouldFlushRequests = false;
 	int32 FramesSinceLastFlush = 0;

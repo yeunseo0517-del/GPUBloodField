@@ -100,48 +100,118 @@ void UBloodFieldSubSystem::SetFieldOrigin(const FVector3f& InOrigin)
 FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y)
 {
 	FBloodSplat Splat;
-
-	FVector Normal = Request.ImpactNormal.GetSafeNormal();
-	FVector ProjectedDirection = Request.Direction - FVector::DotProduct(Request.Direction, Normal) * Normal;
-
-	FVector Tangent = ProjectedDirection.GetSafeNormal();
-	if (ProjectedDirection == FVector::ZeroVector)
-	{
-		FVector RefN = FVector::UpVector;
-		if (abs(FVector::DotProduct(Normal, RefN)) > 0.99) RefN = FVector::ForwardVector;
-		Tangent = FVector::CrossProduct(Normal, RefN).GetSafeNormal();
-	}
-	FVector Bitangent = FVector::CrossProduct(Normal, Tangent).GetSafeNormal();
-
-	FVector Location = Request.WorldLocation + Tangent * (Request.Radius * (x - 2)) + Bitangent * (Request.Radius * (y - 2));
-
-	DrawDebugLine(
-		GetWorld(),
-		Request.WorldLocation,
-		Request.WorldLocation + Normal * 100.f,
-		FColor::Blue ,
-		false,
-		5.f,
-		0,
-		3.f
-	);
-	FHitResult Hit;
-	FVector Start = Location + Normal * 50.f;
-	FVector End = Location - Normal * 50.f;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility);
-	if (bHit)
-	{
-		Location = Hit.ImpactPoint;
-	}
-	FVector v = (Location - Location + 10.f).GetSafeNormal();
-	DrawDebugLine(GetWorld(), Location, Location + v * 100.f, FColor::Green, false, 5.f);
-	//abs(FVector::DotProduct(Normal,
-
-	Splat.WorldLocation = Location;
 	Splat.Radius = Request.Radius;
 	Splat.Strength = Request.Strength;
 
+	FSurfaceBasis Basis = BuildSurfaceBasis(Request);
+	FVector Center = Request.WorldLocation;
+	const float XOffset = Request.Radius * (x - 2);
+	const float YOffset = Request.Radius * (y - 2);
+	FVector Offset = Basis.Tangent * XOffset + Basis.Bitangent * YOffset;
+	FVector Location = Center + Offset;
+
+	DrawDebugLine(GetWorld(), Center, Center + Basis.Normal * 100.f, FColor::Blue , false, 5.f, 0, 3.f);
+
+	FVector OriginalLoc = Location;
+
+	// 1차 Normal 방향 Trace
+	FHitResult NormalHit;
+	if (DoTrace(NormalHit, OriginalLoc + Basis.Normal * 50.f, -Basis.Normal, 100.f)) Location = NormalHit.ImpactPoint;
+	else
+	{
+		// 2차 Trace
+		if (!Offset.IsNearlyZero())
+		{
+			FVector MoveDir = Offset.GetSafeNormal();
+			FHitResult PositiveDirHit;
+			const bool bPositiveDirHit = DoTrace(PositiveDirHit, Center - Basis.Normal * 1.f, MoveDir, 50);
+
+			FHitResult NegativeDirHit;
+			const bool bNegativeDirHit = DoTrace(NegativeDirHit, Center - Basis.Normal * 1.f, -MoveDir, 50.f);
+
+			FHitResult FinalResult;
+			if (bPositiveDirHit && bNegativeDirHit)
+			{
+				FinalResult = FindCloseDistanceNormal(PositiveDirHit, NegativeDirHit, OriginalLoc, Basis.Normal);
+			}
+			else if (bPositiveDirHit)
+			{
+				if (FMath::Abs(FVector::DotProduct(PositiveDirHit.ImpactNormal, Basis.Normal)) < 0.2f)
+				{
+					FinalResult = PositiveDirHit;
+				}
+			}
+			else if (bNegativeDirHit)
+			{
+				if (FMath::Abs(FVector::DotProduct(NegativeDirHit.ImpactNormal, Basis.Normal)) < 0.2f)
+				{
+					FinalResult = NegativeDirHit;
+				}
+			}
+			else
+				return FBloodSplat();
+
+			if (!FinalResult.bBlockingHit) return FBloodSplat();
+
+			Location = TryWrapSharpEdge(Center, FinalResult.ImpactPoint, Offset, FinalResult.ImpactNormal, Basis.Normal);
+			if (Location == FVector::ZeroVector) return FBloodSplat();
+		}
+	}
+	Splat.WorldLocation = Location;
+
 	return Splat;
+}
+
+FSurfaceBasis UBloodFieldSubSystem::BuildSurfaceBasis(const FBloodBurstRequest& Request)
+{
+	FSurfaceBasis Basis;
+	Basis.Normal = Request.ImpactNormal.GetSafeNormal();
+	FVector ProjectedDirection = Request.Direction - FVector::DotProduct(Request.Direction, Basis.Normal) * Basis.Normal;
+
+	Basis.Tangent = ProjectedDirection.GetSafeNormal();
+	if (ProjectedDirection == FVector::ZeroVector)
+	{
+		FVector RefN = FVector::UpVector;
+		if (abs(FVector::DotProduct(Basis.Normal, RefN)) > 0.99) RefN = FVector::ForwardVector;
+		Basis.Tangent = FVector::CrossProduct(Basis.Normal, RefN).GetSafeNormal();
+	}
+	Basis.Bitangent = FVector::CrossProduct(Basis.Normal, Basis.Tangent).GetSafeNormal();
+	return Basis;
+}
+
+bool UBloodFieldSubSystem::DoTrace(FHitResult& Result, const FVector& StartLocation, const FVector& Dir, float EndDistance)
+{
+	FVector Start = StartLocation;
+	FVector End = StartLocation + Dir * EndDistance;
+	return GetWorld()->LineTraceSingleByChannel(Result, Start, End, ECollisionChannel::ECC_Visibility);
+}
+
+FVector UBloodFieldSubSystem::TryWrapSharpEdge(const FVector& Center, const FVector& ImpactPoint, const FVector& Offset, const FVector& NewNormal, const FVector& OldNormal)
+{
+	FVector MoveDir = Offset.GetSafeNormal();
+	if (FMath::Abs(FVector::DotProduct(MoveDir, NewNormal)) <= 0.1f) return FVector::ZeroVector;
+	float UsedDistance = FVector::DotProduct((ImpactPoint - Center), NewNormal) / FVector::DotProduct(MoveDir, NewNormal);
+	float TotalDistance = Offset.Size();
+	if (UsedDistance < 0.f || UsedDistance > TotalDistance) return FVector::ZeroVector;
+	
+	FVector CornerPoint = Center + MoveDir * UsedDistance;
+
+	FQuat DeltaRotation = FQuat::FindBetweenNormals(OldNormal, NewNormal);
+	FVector RotatedMoveDir = DeltaRotation.RotateVector(MoveDir);
+	return CornerPoint + RotatedMoveDir * (TotalDistance - UsedDistance);
+}
+
+FHitResult UBloodFieldSubSystem::FindCloseDistanceNormal(const FHitResult& ResultA, const FHitResult& ResultB, const FVector& OriginLoc, const FVector& OriginNormal)
+{
+	float DistanceA = (ResultA.ImpactPoint - OriginLoc).Size();
+	float DistanceB = (ResultB.ImpactPoint - OriginLoc).Size();
+
+	bool bValidA = FMath::Abs(FVector::DotProduct(ResultA.ImpactNormal, OriginNormal)) < 0.2f;
+	bool bValidB = FMath::Abs(FVector::DotProduct(ResultB.ImpactNormal, OriginNormal)) < 0.2f;
+
+	if (bValidA && bValidB)
+		return DistanceA <= DistanceB ? ResultA : ResultB;
+	return FHitResult();
 }
 
 void UBloodFieldSubSystem::FlushRequests()

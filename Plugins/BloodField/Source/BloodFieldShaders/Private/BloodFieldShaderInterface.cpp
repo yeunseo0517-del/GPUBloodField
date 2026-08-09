@@ -44,8 +44,6 @@ void FBloodFieldShaderInterface::AddBloodFieldPass(FRDGBuilder& GraphBuilder, co
 	PassParameters->Radius = FMath::Max(InRadius, InScale.X / InResolution);
 	PassParameters->OutVolume = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(VolumeTexture));
 
-	UE_LOG(LogTemp, Warning, TEXT("%f"), PassParameters->Radius)
-
 	const FIntVector GroupCount(
 		FMath::DivideAndRoundUp(InResolution, uint32(4)),
 		FMath::DivideAndRoundUp(InResolution, uint32(4)),

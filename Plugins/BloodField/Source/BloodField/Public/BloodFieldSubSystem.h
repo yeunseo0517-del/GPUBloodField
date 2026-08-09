@@ -43,6 +43,7 @@ private:
 	bool bShouldFlushRequests = false;
 	int32 FramesSinceLastFlush = 0;
 	int32 FlushIntervalFrames = 1;
+	float SmoothNormalThreshold = 0.9f;
 
 	UPROPERTY()
 	TArray<FBloodSplat> BloodSplats;

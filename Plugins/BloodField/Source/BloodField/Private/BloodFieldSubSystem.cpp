@@ -10,7 +10,7 @@ namespace
 {
 	constexpr int32 PatternMask[5][5] =
 	{
-		{ 0, 1, 0, 0, 1 },
+		{ 0, 1, 0, 0, 0 },
 		{ 1, 1, 1, 0, 0 },
 		{ 0, 0, 1, 1, 1 },
 		{ 0, 0, 0, 1, 0 },
@@ -79,10 +79,9 @@ void UBloodFieldSubSystem::Tick(float DeltaTime)
 void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
 {
 	if (!bShouldFlushRequests) bShouldFlushRequests = true;
-
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < 5; ++i)
 	{
-		for (int j = 0; j < 4; ++j)
+		for (int j = 0; j < 5; ++j)
 		{
 			if (PatternMask[i][j] == 1)
 			{
@@ -110,24 +109,38 @@ FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstReques
 	FVector Offset = Basis.Tangent * XOffset + Basis.Bitangent * YOffset;
 	FVector Location = Center + Offset;
 
-	DrawDebugLine(GetWorld(), Center, Center + Basis.Normal * 100.f, FColor::Blue , false, 5.f, 0, 3.f);
+	//DrawDebugLine(GetWorld(), Center, Center + Basis.Normal * 100.f, FColor::Blue , false, 5.f, 0, 3.f);
 
 	FVector OriginalLoc = Location;
 
 	// 1차 Normal 방향 Trace
+	bool bValidNormalHit = false;
 	FHitResult NormalHit;
-	if (DoTrace(NormalHit, OriginalLoc + Basis.Normal * 50.f, -Basis.Normal, 100.f)) Location = NormalHit.ImpactPoint;
-	else
+	if (DoTrace(NormalHit, OriginalLoc + Basis.Normal * 50.f, -Basis.Normal, 100.f))
+	{
+		const float CorrectDistance = (NormalHit.ImpactPoint - OriginalLoc).Size();
+		const float NormalDot = FVector::DotProduct(NormalHit.ImpactNormal.GetSafeNormal(), Basis.Normal);
+
+		if (CorrectDistance <= 5.f && NormalDot >= SmoothNormalThreshold)
+		{
+			Location = NormalHit.ImpactPoint;
+			bValidNormalHit = true;
+		}
+	}
+	
+	if (!bValidNormalHit)
 	{
 		// 2차 Trace
 		if (!Offset.IsNearlyZero())
 		{
 			FVector MoveDir = Offset.GetSafeNormal();
+			FVector StartPoint = OriginalLoc - Basis.Normal * 1.f;
+
 			FHitResult PositiveDirHit;
-			const bool bPositiveDirHit = DoTrace(PositiveDirHit, Center - Basis.Normal * 1.f, MoveDir, 50);
+			const bool bPositiveDirHit = DoTrace(PositiveDirHit, StartPoint, MoveDir, 50);
 
 			FHitResult NegativeDirHit;
-			const bool bNegativeDirHit = DoTrace(NegativeDirHit, Center - Basis.Normal * 1.f, -MoveDir, 50.f);
+			const bool bNegativeDirHit = DoTrace(NegativeDirHit, StartPoint, -MoveDir, 50.f);
 
 			FHitResult FinalResult;
 			if (bPositiveDirHit && bNegativeDirHit)
@@ -136,24 +149,27 @@ FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstReques
 			}
 			else if (bPositiveDirHit)
 			{
-				if (FMath::Abs(FVector::DotProduct(PositiveDirHit.ImpactNormal, Basis.Normal)) < 0.2f)
+				if (FVector::DotProduct(PositiveDirHit.ImpactNormal, Basis.Normal) < SmoothNormalThreshold)
 				{
 					FinalResult = PositiveDirHit;
 				}
 			}
 			else if (bNegativeDirHit)
 			{
-				if (FMath::Abs(FVector::DotProduct(NegativeDirHit.ImpactNormal, Basis.Normal)) < 0.2f)
+				if (FVector::DotProduct(NegativeDirHit.ImpactNormal, Basis.Normal) < SmoothNormalThreshold)
 				{
 					FinalResult = NegativeDirHit;
 				}
 			}
 			else
+			{
 				return FBloodSplat();
+			}
 
 			if (!FinalResult.bBlockingHit) return FBloodSplat();
 
 			Location = TryWrapSharpEdge(Center, FinalResult.ImpactPoint, Offset, FinalResult.ImpactNormal, Basis.Normal);
+			
 			if (Location == FVector::ZeroVector) return FBloodSplat();
 		}
 	}

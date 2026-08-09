@@ -110,7 +110,7 @@ void ABloodSurfaceResearchCharacter::SetupPlayerInputComponent(UInputComponent* 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABloodSurfaceResearchCharacter::Look);
 
-		EnhancedInputComponent->BindAction(BloodAction, ETriggerEvent::Triggered, this, &ABloodSurfaceResearchCharacter::MakeBlood);
+		EnhancedInputComponent->BindAction(BloodAction, ETriggerEvent::Started, this, &ABloodSurfaceResearchCharacter::MakeBlood);
 
 		EnhancedInputComponent->BindAction(CameraRotateAction, ETriggerEvent::Started, this, &ABloodSurfaceResearchCharacter::StartCameraRotation);
 		EnhancedInputComponent->BindAction(CameraRotateAction, ETriggerEvent::Completed , this, &ABloodSurfaceResearchCharacter::StopCameraRotation);

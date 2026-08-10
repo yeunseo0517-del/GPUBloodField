@@ -5,6 +5,7 @@
 #include "Engine/TextureRenderTargetVolume.h"
 #include "BloodFieldShaderInterface.h"
 #include "DrawDebugHelpers.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 
 namespace
 {
@@ -39,6 +40,14 @@ void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 		PF_R32_FLOAT);
 	// 리소스를 즉시 갱신하고 검은색으로 클리어
 	BloodFieldTarget->UpdateResourceImmediate(true);
+
+	//UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(BloodFieldMPC);
+
+	/*if (MPCInstance)
+	{
+		MPCInstance->SetVectorParameterValue(TEXT("FieldOrigin"), FieldOrigin);
+		MPCInstance->SetVectorParameterValue(TEXT("FieldScale"), FieldScale);
+	}*/
 }
 
 void UBloodFieldSubSystem::Deinitialize()

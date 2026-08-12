@@ -9,7 +9,7 @@ class FBloodFieldCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FBloodFieldCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(uint32, Resolution)
+		SHADER_PARAMETER(FIntVector, Resolution)
 		SHADER_PARAMETER(FVector3f, Scale)
 		SHADER_PARAMETER(FVector3f, Origin)
 		SHADER_PARAMETER(FVector3f, Location)

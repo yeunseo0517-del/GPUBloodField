@@ -36,7 +36,8 @@ public class BloodField : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
-				"BloodFieldShaders"
+				"BloodFieldShaders",
+                "DeveloperSettings"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

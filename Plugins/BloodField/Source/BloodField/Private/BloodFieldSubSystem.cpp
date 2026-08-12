@@ -6,6 +6,8 @@
 #include "BloodFieldShaderInterface.h"
 #include "DrawDebugHelpers.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "BloodFieldSettings.h"
 
 namespace
 {
@@ -23,7 +25,21 @@ void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	BloodFieldTarget = NewObject<UTextureRenderTargetVolume>(this, TEXT("BloodFieldTarget"));
+	const UBloodFieldSettings* Settings = GetDefault<UBloodFieldSettings>();
+
+	const UMaterialParameterCollection* MPC = Settings->BloodFieldMPC.LoadSynchronous();
+	if (MPC)
+	{
+		UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(MPC);
+
+		if (MPCInstance)
+		{
+			MPCInstance->SetVectorParameterValue(TEXT("FieldOrigin"), FieldOrigin);
+			MPCInstance->SetVectorParameterValue(TEXT("FieldScale"), FieldScale);
+		}
+	}
+
+	BloodFieldTarget = Settings->BloodFieldRenderTarget.LoadSynchronous();
 
 	if (!BloodFieldTarget) return;
 
@@ -34,20 +50,12 @@ void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 	BloodFieldTarget->ClearColor = FLinearColor::Black;
 	// 128 × 128 × 128, 복셀당 float 하나
 	BloodFieldTarget->Init(
-		Resolution,
-		Resolution,
-		Resolution,
+		Resolution.X,
+		Resolution.Y,
+		Resolution.Z,
 		PF_R32_FLOAT);
 	// 리소스를 즉시 갱신하고 검은색으로 클리어
 	BloodFieldTarget->UpdateResourceImmediate(true);
-
-	//UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(BloodFieldMPC);
-
-	/*if (MPCInstance)
-	{
-		MPCInstance->SetVectorParameterValue(TEXT("FieldOrigin"), FieldOrigin);
-		MPCInstance->SetVectorParameterValue(TEXT("FieldScale"), FieldScale);
-	}*/
 }
 
 void UBloodFieldSubSystem::Deinitialize()
@@ -103,6 +111,18 @@ void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
 void UBloodFieldSubSystem::SetFieldOrigin(const FVector3f& InOrigin)
 {
 	FieldOrigin = InOrigin;
+	const UBloodFieldSettings* Settings = GetDefault<UBloodFieldSettings>();
+	const UMaterialParameterCollection* MPC = Settings->BloodFieldMPC.LoadSynchronous();
+	if (MPC)
+	{
+		UMaterialParameterCollectionInstance* MPCInstance = GetWorld()->GetParameterCollectionInstance(MPC);
+
+		if (MPCInstance)
+		{
+			MPCInstance->SetVectorParameterValue(TEXT("FieldOrigin"), FieldOrigin);
+			MPCInstance->SetVectorParameterValue(TEXT("FieldScale"), FieldScale);
+		}
+	}
 }
 
 FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y)
@@ -257,8 +277,8 @@ void UBloodFieldSubSystem::FlushRequests()
 
 	for (const auto& Splat : BloodSplats)
 	{
-		DrawDebugSphere(GetWorld(), Splat.WorldLocation, Splat.Radius, 12, FColor::Red, false, 5.f);
-		FBloodFieldShaderInterface::Dispatch(RT, static_cast<uint32>(Resolution), FieldScale, FieldOrigin, FVector3f(Splat.WorldLocation), Splat.Radius);
+		DrawDebugSphere(GetWorld(), Splat.WorldLocation, Splat.Radius, 12, FColor::Green, false, 1.f);
+		FBloodFieldShaderInterface::Dispatch(RT, static_cast<FIntVector>(Resolution), FieldScale, FieldOrigin, FVector3f(Splat.WorldLocation), Splat.Radius);
 	}
 
 	BloodSplats.Empty();

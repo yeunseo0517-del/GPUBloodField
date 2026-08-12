@@ -146,7 +146,7 @@ void ABloodSurfaceResearchCharacter::MakeBlood()
 	Request.ImpactNormal = Hit.ImpactNormal;
 	Request.WorldLocation = Hit.ImpactPoint;
 	Request.Direction = (Hit.ImpactPoint - GetPawnViewLocation()).GetSafeNormal();
-	Request.Radius = 10.f;
+	Request.Radius = 5.f;
 
 	BloodFieldSubsystem->RequestBloodSplat(Request);
 }

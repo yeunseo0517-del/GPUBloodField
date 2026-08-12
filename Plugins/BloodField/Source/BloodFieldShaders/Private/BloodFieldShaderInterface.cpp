@@ -3,7 +3,7 @@
 #include "RenderGraphUtils.h"
 #include "BloodFieldCS.h"
 
-void FBloodFieldShaderInterface::Dispatch(FTextureRenderTargetResource* TargetResource, uint32 InResolution, const FVector3f& InScale, const FVector3f& InOrigin, const FVector3f& InLocation, float InRadius)
+void FBloodFieldShaderInterface::Dispatch(FTextureRenderTargetResource* TargetResource, const FIntVector& InResolution, const FVector3f& InScale, const FVector3f& InOrigin, const FVector3f& InLocation, float InRadius)
 {
 	ENQUEUE_RENDER_COMMAND(DispatchBloodField)(
 		[TargetResource, InResolution, InScale, InOrigin, InLocation, InRadius]
@@ -27,7 +27,7 @@ void FBloodFieldShaderInterface::Dispatch(FTextureRenderTargetResource* TargetRe
 		});
 }
 
-void FBloodFieldShaderInterface::AddBloodFieldPass(FRDGBuilder& GraphBuilder, const FGlobalShaderMap* InShaderMap, uint32 InResolution, const FVector3f& InScale, const FVector3f& InOrigin, const FVector3f& InLocation, float InRadius, FRDGTextureRef VolumeTexture)
+void FBloodFieldShaderInterface::AddBloodFieldPass(FRDGBuilder& GraphBuilder, const FGlobalShaderMap* InShaderMap, const FIntVector& InResolution, const FVector3f& InScale, const FVector3f& InOrigin, const FVector3f& InLocation, float InRadius, FRDGTextureRef VolumeTexture)
 {
 	if (!ensure(IsInRenderingThread())) return;
 
@@ -41,13 +41,15 @@ void FBloodFieldShaderInterface::AddBloodFieldPass(FRDGBuilder& GraphBuilder, co
 	PassParameters->Scale = InScale;
 	PassParameters->Origin = InOrigin;
 	PassParameters->Location = InLocation;
-	PassParameters->Radius = FMath::Max(InRadius, InScale.X / InResolution);
+	//const float MaxVoxelSize = FMath::Max3(InScale.X / InResolution.X, InScale.Y / InResolution.Y, InScale.Z / InResolution.Z);
+	//PassParameters->Radius = FMath::Max(InRadius, MaxVoxelSize);
+	PassParameters->Radius = InRadius;
 	PassParameters->OutVolume = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(VolumeTexture));
 
 	const FIntVector GroupCount(
-		FMath::DivideAndRoundUp(InResolution, uint32(4)),
-		FMath::DivideAndRoundUp(InResolution, uint32(4)),
-		FMath::DivideAndRoundUp(InResolution, uint32(4))
+		FMath::DivideAndRoundUp(InResolution.X, int32(4)),
+		FMath::DivideAndRoundUp(InResolution.Y, int32(4)),
+		FMath::DivideAndRoundUp(InResolution.Z, int32(4))
 	);
 
 	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("BloodField"), ERDGPassFlags::Compute | ERDGPassFlags::NeverCull, ComputeShader, PassParameters, GroupCount);

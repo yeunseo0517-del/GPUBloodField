@@ -24,6 +24,11 @@
 			"Name": "BloodFieldShaders",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "BloodFieldEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	]
 }

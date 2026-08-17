@@ -259,6 +259,10 @@ FHitResult UBloodFieldSubSystem::FindCloseDistanceNormal(const FHitResult& Resul
 	return FHitResult();
 }
 
+void UBloodFieldSubSystem::ExtractBloodSamples()
+{
+}
+
 void UBloodFieldSubSystem::FlushRequests()
 {
 	if (!BloodFieldTarget)

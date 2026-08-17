@@ -48,6 +48,9 @@ class ABloodSurfaceResearchCharacter : public ACharacter
 	UInputAction* BloodAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* DecalAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* CameraRotateAction;
 
 public:
@@ -72,6 +75,7 @@ protected:
 
 private:
 	void MakeBlood();
+	void MakeBloodDecal();
 	void StartCameraRotation();
 	void StopCameraRotation();
 

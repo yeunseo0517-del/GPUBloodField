@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
+#include "ImageCore.h"
 #include "BloodFieldSettings.generated.h"
 
 class UMaterialParameterCollection;
@@ -18,4 +19,7 @@ public:
 
 	UPROPERTY(Config, EditAnywhere, Category = "Resources")
 	TSoftObjectPtr<UTextureRenderTargetVolume> BloodFieldRenderTarget;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Resources")
+	TSoftObjectPtr<UTexture2D> BloodTexture;
 };

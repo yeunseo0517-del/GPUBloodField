@@ -39,6 +39,7 @@ private:
 	FSurfaceBasis BuildSurfaceBasis(const FBloodBurstRequest& Request);
 	FVector TryWrapSharpEdge(const FVector& Center, const FVector& ImpactPoint, const FVector& Offset, const FVector& NewNormal, const FVector& OldNormal);
 	FHitResult FindCloseDistanceNormal(const FHitResult& ResultA, const FHitResult& ResultB, const FVector& Origin, const FVector& OriginNormal);
+	void ExtractBloodSamples();
 
 	bool bShouldFlushRequests = false;
 	int32 FramesSinceLastFlush = 0;

@@ -111,6 +111,7 @@ void ABloodSurfaceResearchCharacter::SetupPlayerInputComponent(UInputComponent* 
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABloodSurfaceResearchCharacter::Look);
 
 		EnhancedInputComponent->BindAction(BloodAction, ETriggerEvent::Started, this, &ABloodSurfaceResearchCharacter::MakeBlood);
+		EnhancedInputComponent->BindAction(DecalAction, ETriggerEvent::Started, this, &ABloodSurfaceResearchCharacter::MakeBloodDecal);
 
 		EnhancedInputComponent->BindAction(CameraRotateAction, ETriggerEvent::Started, this, &ABloodSurfaceResearchCharacter::StartCameraRotation);
 		EnhancedInputComponent->BindAction(CameraRotateAction, ETriggerEvent::Completed , this, &ABloodSurfaceResearchCharacter::StopCameraRotation);
@@ -149,6 +150,46 @@ void ABloodSurfaceResearchCharacter::MakeBlood()
 	Request.Radius = 5.f;
 
 	BloodFieldSubsystem->RequestBloodSplat(Request);
+}
+
+void ABloodSurfaceResearchCharacter::MakeBloodDecal()
+{
+	if (!BloodDecalMaterial) return;
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	FVector TraceStart;
+	FVector TraceDirection;
+
+	if (!PC->DeprojectMousePositionToWorld(TraceStart, TraceDirection))
+		return;
+
+	const FVector TraceEnd = TraceStart + TraceDirection * 100000.f;
+
+	FHitResult Hit;
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	if (!GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		TraceStart,
+		TraceEnd,
+		ECC_Visibility,
+		Params))
+	{
+		return;
+	}
+
+	UGameplayStatics::SpawnDecalAtLocation(
+		GetWorld(),
+		BloodDecalMaterial,
+		FVector(20.f, 20.f, 50.f),
+		Hit.ImpactPoint,
+		(-Hit.ImpactNormal).Rotation(),
+		0.f
+	);
 }
 
 void ABloodSurfaceResearchCharacter::BeginPlay()

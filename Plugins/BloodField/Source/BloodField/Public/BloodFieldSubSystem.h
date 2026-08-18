@@ -33,7 +33,7 @@ public:
 	class UTextureRenderTargetVolume* GetBloodFieldTarget() const { return BloodFieldTarget; }
 
 private:
-	FBloodSplat CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y);
+	FBloodSplat CalculateSplatLocation(const FBloodBurstRequest& Request, const FVector2D& SampleUV);
 	void FlushRequests();
 	bool DoTrace(FHitResult& Result, const FVector& StartLocation, const FVector& Dir, float EndDistance);
 	FSurfaceBasis BuildSurfaceBasis(const FBloodBurstRequest& Request);

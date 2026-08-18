@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
 #include "ImageCore.h"
+#include "BloodPatternData.h"
+#include "BloodPatternSettings.h"
 #include "BloodFieldSettings.generated.h"
 
 class UMaterialParameterCollection;
@@ -21,5 +23,9 @@ public:
 	TSoftObjectPtr<UTextureRenderTargetVolume> BloodFieldRenderTarget;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Resources")
-	TSoftObjectPtr<UTexture2D> BloodTexture;
+	TSoftObjectPtr<UBloodPatternData> BloodPatternData;
+
+	// Pattern Analysis
+	UPROPERTY(EditAnywhere, Config, Category = "Pattern")
+	FBloodPatternSettings BloodPatternSettings;
 };

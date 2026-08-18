@@ -9,18 +9,6 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "BloodFieldSettings.h"
 
-namespace
-{
-	constexpr int32 PatternMask[5][5] =
-	{
-		{ 0, 1, 0, 0, 0 },
-		{ 1, 1, 1, 0, 0 },
-		{ 0, 0, 1, 1, 1 },
-		{ 0, 0, 0, 1, 0 },
-		{ 0, 0, 0, 1, 0 }
-	};
-}
-
 void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -96,15 +84,15 @@ void UBloodFieldSubSystem::Tick(float DeltaTime)
 void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
 {
 	if (!bShouldFlushRequests) bShouldFlushRequests = true;
-	for (int i = 0; i < 5; ++i)
+
+	const UBloodFieldSettings* Settings = GetDefault<UBloodFieldSettings>();
+	const UBloodPatternData* BloodPattern = Settings->BloodPatternData.LoadSynchronous();
+	const TArray<FVector2D> PatternSample = BloodPattern->SampleUVs;
+	UE_LOG(LogTemp,Warning,TEXT("%d"), PatternSample.Num())
+	for (int i = 0; i < PatternSample.Num(); ++i)
 	{
-		for (int j = 0; j < 5; ++j)
-		{
-			if (PatternMask[i][j] == 1)
-			{
-				BloodSplats.Add(CalculateSplatLocation(Request, i, j));
-			}
-		}
+		//UE_LOG(LogTemp, Warning, TEXT("x= %d y= %d"), PatternSample[i].X, PatternSample[i].Y)
+		BloodSplats.Add(CalculateSplatLocation(Request, PatternSample[i]));
 	}
 }
 
@@ -125,16 +113,19 @@ void UBloodFieldSubSystem::SetFieldOrigin(const FVector3f& InOrigin)
 	}
 }
 
-FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstRequest& Request, int x, int y)
+FBloodSplat UBloodFieldSubSystem::CalculateSplatLocation(const FBloodBurstRequest& Request, const FVector2D& SampleUV)
 {
 	FBloodSplat Splat;
 	Splat.Radius = Request.Radius;
 	Splat.Strength = Request.Strength;
 
+	const UBloodFieldSettings* Settings = GetDefault<UBloodFieldSettings>();
+	const int32 GridSize = Settings->BloodPatternSettings.GridSize;
+
 	FSurfaceBasis Basis = BuildSurfaceBasis(Request);
 	FVector Center = Request.WorldLocation;
-	const float XOffset = Request.Radius * (x - 2);
-	const float YOffset = Request.Radius * (y - 2);
+	const float XOffset = Request.Radius * (SampleUV.X - 0.5) * GridSize;
+	const float YOffset = Request.Radius * (SampleUV.Y - 0.5) * GridSize;
 	FVector Offset = Basis.Tangent * XOffset + Basis.Bitangent * YOffset;
 	FVector Location = Center + Offset;
 

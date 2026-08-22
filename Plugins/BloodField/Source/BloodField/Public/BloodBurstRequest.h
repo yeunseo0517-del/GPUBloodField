@@ -1,12 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BloodFieldShaderTypes.h"
 #include "BloodBurstRequest.generated.h"
 
 USTRUCT(BlueprintType)
 struct FBloodBurstRequest
 {
-	GENERATED_BODY();
+	GENERATED_BODY()
 	
 	UPROPERTY()
 	FVector ImpactNormal = FVector::ZeroVector;
@@ -19,22 +20,13 @@ struct FBloodBurstRequest
 
 	UPROPERTY()
 	float Radius = 50.f;
-
-	UPROPERTY()
-	float Strength = 1.f;
 };
 
-USTRUCT(BlueprintType)
-struct FBloodSplat
+USTRUCT()
+struct FBloodSplatGroup
 {
-	GENERATED_BODY();
-	
-	UPROPERTY()
-	FVector WorldLocation = FVector::ZeroVector;
+	GENERATED_BODY()
 
-	UPROPERTY()
-	float Radius;
-
-	UPROPERTY()
-	float Strength = 1.f;
+	TArray<FSplatGPUData> BloodSplats;
+	FSplatGPUGroupData SplatGroupData;
 };

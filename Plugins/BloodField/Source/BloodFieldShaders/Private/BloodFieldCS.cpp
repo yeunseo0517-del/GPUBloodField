@@ -1,8 +1,15 @@
 #include "BloodFieldCS.h"
 
 IMPLEMENT_GLOBAL_SHADER(
-	FBloodFieldCS,
+	FBloodSelectCS,
 	"/Plugin/BloodField/Private/BloodField.usf",
-	"BloodField",
+	"SelectionPassCS",
+	SF_Compute
+);
+
+IMPLEMENT_GLOBAL_SHADER(
+	FBloodFieldResolveCS,
+	"/Plugin/BloodField/Private/BloodField.usf",
+	"ResolvePassCS",
 	SF_Compute
 );

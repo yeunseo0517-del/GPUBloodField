@@ -23,9 +23,17 @@ public:
 	TSoftObjectPtr<UTextureRenderTargetVolume> BloodFieldRenderTarget;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Resources")
-	TSoftObjectPtr<UBloodPatternData> BloodPatternData;
+	TArray<TSoftObjectPtr<UBloodPatternData>> BloodPatternData;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Blood Pattern")
+	TSoftObjectPtr<UTexture2DArray> BloodPatternArray;
 
 	// Pattern Analysis
 	UPROPERTY(EditAnywhere, Config, Category = "Pattern")
 	FBloodPatternSettings BloodPatternSettings;
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	void RebuildPatternTextureArray();
+#endif
 };

@@ -2,24 +2,111 @@
 
 #include "/Engine/Public/Platform.ush"
 
-RWTexture3D<float> OutVolume;
+// Common
 int3 Resolution;
 float3 Scale;
 float3 Origin;
-float3 Location;
 float Radius;
 
-[numthreads(4, 4, 4)]
-void BloodField(uint3 DispatchThreadID : SV_DispatchThreadID)
+struct FSplatGPUData
 {
+    float3 Location;
+    float2 SampleUV;
+    uint GroupIndex;
+    float3 Tangent;
+    float3 Bitangent;
+};
+StructuredBuffer<FSplatGPUData> SplatBuffer;
+
+// Pass 1
+uint SplatCount;
+uint VoxelsPerSplat;
+uint3 VoxelRadius;
+uint3 Side;
+RWTexture3D<uint> ResolveTextureUAV;
+
+// Pass 2
+Texture3D<uint> ResolveTextureSRV;
+struct FSplatGPUGroupData
+{
+    uint PatternID;
+};
+StructuredBuffer<FSplatGPUGroupData> GroupBuffer;
+float2 PatternWorldSize;
+RWTexture3D<float4> OutVolume;
+
+[numthreads(64, 1, 1)]
+void SelectionPassCS(uint3 DispatchThreadID : SV_DispatchThreadID)
+{
+    if (DispatchThreadID.x >= SplatCount * VoxelsPerSplat)
+        return;
+    
+    uint ThreadIndex = DispatchThreadID.x;
+    uint SplatID = ThreadIndex / VoxelsPerSplat;
+    FSplatGPUData Splat = SplatBuffer[SplatID];
+    
+    float3 UVW = (Splat.Location - Origin) / Scale + 0.5;
+    int3 CenterVoxel = int3(floor(UVW * Resolution));
+    
+    uint LocalVoxelIndex = ThreadIndex % VoxelsPerSplat;
+    uint x = LocalVoxelIndex % Side.x;
+    uint y = (LocalVoxelIndex / Side.x) % Side.y;
+    uint z = LocalVoxelIndex / (Side.x * Side.y);
+    int3 LocalOffset = int3(x, y, z) - int3(VoxelRadius);
+    int3 TargetVoxel = CenterVoxel + LocalOffset;
+    if (any(TargetVoxel < 0) || any(TargetVoxel >= int3(Resolution)))
+        return;
+    
+    float3 TargetUVW = (TargetVoxel + 0.5) / Resolution;
+    float3 TargetWorldPosition = (TargetUVW - 0.5) * Scale + Origin;
+    
+    float Dist = length(TargetWorldPosition - Splat.Location);
+    if (Dist >= Radius) return;
+    float Intensity = 1 - saturate(Dist / Radius);
+    
+    uint QuantizedIntensity = (uint) (saturate(Intensity) * 65535.0);
+    if (QuantizedIntensity == 0)
+        return;
+    uint Packed = (QuantizedIntensity << 16) | SplatID;
+
+    InterlockedMax(ResolveTextureUAV[TargetVoxel], Packed);
+}
+
+[numthreads(4, 4, 4)]
+void ResolvePassCS(uint3 DispatchThreadID : SV_DispatchThreadID)
+{
+    //if (any(DispatchThreadID >= uint3(Resolution)))
+    //    return;
+    //
+    //uint Packed = ResolveTextureSRV[DispatchThreadID];
+    //
+    //if (Packed != 0)
+    //    OutVolume[DispatchThreadID] = float4(1, 0, 0, 1);
+    //else
+    //    OutVolume[DispatchThreadID] = float4(0, 0, 0, 0);
     if (any(DispatchThreadID >= uint3(Resolution)))
         return;
     
-    const float3 UVW = (float3(DispatchThreadID) + 0.5) / float3(Resolution);
+    uint Packed = ResolveTextureSRV[DispatchThreadID];
+    if (Packed == 0)
+        return;
     
-    const float3 Position = (UVW - 0.5) * Scale + Origin;
-    const float Distance = length(Position - Location);
-    const float Mask = 1.0f - smoothstep(0.9, 1.0, Distance / Radius);
+    uint SplatID = Packed & 0xFFFF;
+    FSplatGPUData Splat = SplatBuffer[SplatID];
+    uint GroupIndex = Splat.GroupIndex;
+    float3 UVW = (float3(DispatchThreadID) + 0.5) / float3(Resolution);
+    float3 WorldPosition = (UVW - 0.5) * Scale + Origin;
+    float3 Offset = WorldPosition - Splat.Location;
+    float UOffset = dot(Offset, SplatBuffer[SplatID].Tangent) / PatternWorldSize.x;
+    float VOffset = dot(Offset, SplatBuffer[SplatID].Bitangent) / PatternWorldSize.y;
+    float2 FinalUV = float2(Splat.SampleUV.x + UOffset, Splat.SampleUV.y + VOffset);
+    bool bOut = any(FinalUV < 0.0f) || any(FinalUV > 1.0f);
+    if (any(FinalUV < 0.0f) || any(FinalUV > 1.0f))
+        return;
     
-    OutVolume[DispatchThreadID] += Mask;
+    uint QuantizedIntensity = Packed >> 16;
+    float Mask = QuantizedIntensity / 65535.0f;
+    // R = FinalUV.X, G = FinalUV.Y, B = PatternID, A = Valid/Mask
+    // OutVolume[DispatchThreadID] = bOut ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
+    OutVolume[DispatchThreadID] = float4(FinalUV.x, FinalUV.y, GroupBuffer[GroupIndex].PatternID, Mask);
 }

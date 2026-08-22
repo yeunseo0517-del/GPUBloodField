@@ -33,13 +33,12 @@ public:
 	class UTextureRenderTargetVolume* GetBloodFieldTarget() const { return BloodFieldTarget; }
 
 private:
-	FBloodSplat CalculateSplatLocation(const FBloodBurstRequest& Request, const FVector2D& SampleUV);
+	bool CalculateSplatLocation(FSplatGPUData& Splat, const FSurfaceBasis& Basis, const FBloodBurstRequest& Request, const FVector2D& SampleUV);
 	void FlushRequests();
 	bool DoTrace(FHitResult& Result, const FVector& StartLocation, const FVector& Dir, float EndDistance);
 	FSurfaceBasis BuildSurfaceBasis(const FBloodBurstRequest& Request);
-	FVector TryWrapSharpEdge(const FVector& Center, const FVector& ImpactPoint, const FVector& Offset, const FVector& NewNormal, const FVector& OldNormal);
+	bool TryWrapSharpEdge(FVector& OutLocation, FSurfaceBasis& Basis, const FVector& Center, const FVector& ImpactPoint, const FVector& Offset, const FVector& NewNormal, const FVector& OldNormal);
 	FHitResult FindCloseDistanceNormal(const FHitResult& ResultA, const FHitResult& ResultB, const FVector& Origin, const FVector& OriginNormal);
-	void ExtractBloodSamples();
 
 	bool bShouldFlushRequests = false;
 	int32 FramesSinceLastFlush = 0;
@@ -47,14 +46,12 @@ private:
 	float SmoothNormalThreshold = 0.9f;
 
 	UPROPERTY()
-	TArray<FBloodSplat> BloodSplats;
+	TArray<FBloodSplatGroup> SplatGroup;
 
 	UPROPERTY(Transient)
 	TObjectPtr<class UTextureRenderTargetVolume> BloodFieldTarget;
 
+	FIntVector Resolution = { 512,512,52 };
 	FVector3f FieldScale = FVector3f(5000.f, 5000.f, 500.f);
 	FVector3f FieldOrigin = FVector3f::ZeroVector;
-
-	UPROPERTY(EditAnywhere)
-	FIntVector Resolution = { 512,512,52 };
 };

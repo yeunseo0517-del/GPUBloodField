@@ -5,8 +5,8 @@
 class BLOODFIELDSHADERS_API FBloodFieldShaderInterface
 {
 public:
-	static void Dispatch(FTextureRenderTargetResource* TargetResource, const FIntVector& InResolution, const FVector3f& InScale, const FVector3f& InOrigin, const FVector3f& InLocation, float InRadius);
+	static void Dispatch(FTextureRenderTargetResource* TargetResource, const struct FBloodFieldPassInput& Input);
 
 private:
-	static void AddBloodFieldPass(FRDGBuilder& GraphBuilder, const FGlobalShaderMap* InShaderMap, const FIntVector& InResolution, const FVector3f& InScale, const FVector3f& InOrigin, const FVector3f& InLocation, float InRadius, FRDGTextureRef VolumeTexture);
+	static void AddBloodFieldPass(FRDGBuilder& GraphBuilder, FRDGTextureRef VolumeTexture, const FGlobalShaderMap* InShaderMap, const struct FBloodFieldPassInput& Input);
 };

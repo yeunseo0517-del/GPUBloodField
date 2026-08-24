@@ -105,7 +105,7 @@ Blood Texture는 불규칙한 형태를 가지므로 전체 영역이 혈흔으�
 
 #### 방법
 
-각 Cell에서 유효한 Alpha 픽셀이 차지하는 비율을 계산하고 일정 Coverage 이상인 Cell만 최종적으로 Sample로선택했습니다.
+각 Cell에서 유효한 Alpha 픽셀이 차지하는 비율을 계산하고 일정 Coverage 이상인 Cell만 최종적으로 Sample로 선택했습니다.
 
 #### 실험 결과
 
@@ -329,7 +329,7 @@ Material에서 Pattern UV를 다시 계산하려면 각 Sample의 Location, Tang
 |:---:|---|
 | **R** | Blood Texture `UV.X` |
 | **G** | Blood Texture `UV.Y` |
-| **B** | ` Texture ID` |
+| **B** | `Texture ID` |
 | **A** | `Valid Mask` |
 
 ----

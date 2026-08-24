@@ -273,7 +273,7 @@ Material은 각 픽셀의 World Position을 이미 알고 있기 때문에, 이�
 
 #### Pass 1 — Winner Selection
 
-'Intensity' (Sample 중심과의 거리) + `SplatID`를 하나의 uint로 Packing하고 InterlockedMax를 사용해 각 Voxel에서 가장 강한 Splat을 선택해 Resolve Texture에 저장합니다.
+`Intensity`(Sample 중심과의 거리) + `SplatID`를 하나의 uint로 Packing하고 InterlockedMax를 사용해 각 Voxel에서 가장 강한 Splat을 선택해 Resolve Texture에 저장합니다.
 
 Splat: 실제 표면 위치가 계산되어 월드 공간에 배치된 하나의 Sample
 

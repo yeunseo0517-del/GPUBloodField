@@ -51,7 +51,7 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<class UTextureRenderTargetVolume> BloodFieldTarget;
 
-	FIntVector Resolution = { 512,512,52 };
-	FVector3f FieldScale = FVector3f(5000.f, 5000.f, 500.f);
+	FIntVector Resolution = { 384,384,52 };
+	FVector3f FieldScale = FVector3f(3000.f, 3000.f, 500.f);
 	FVector3f FieldOrigin = FVector3f::ZeroVector;
 };

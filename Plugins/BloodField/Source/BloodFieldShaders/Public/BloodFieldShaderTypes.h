@@ -6,7 +6,7 @@ struct FSplatGPUData
 {
 	FVector3f Location;
 	FVector2f SampleUV;
-	int32 GroupIndex;
+	uint32 GroupIndex;
 	FVector3f Tangent;
 	FVector3f Bitangent;
 };
@@ -25,4 +25,5 @@ struct FBloodFieldPassInput
 	FVector2f PatternWorldSize;
 	TArray<FSplatGPUData> SplatsData;
 	TArray<FSplatGPUGroupData> GroupData;
+	FRHITexture* BloodTextures;
 };

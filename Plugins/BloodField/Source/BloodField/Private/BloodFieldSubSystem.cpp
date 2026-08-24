@@ -8,6 +8,7 @@
 #include "Materials/MaterialParameterCollectionInstance.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "BloodFieldSettings.h"
+#include "Engine/Texture2DArray.h"
 
 void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -36,6 +37,7 @@ void UBloodFieldSubSystem::Initialize(FSubsystemCollectionBase& Collection)
 	BloodFieldTarget->bForceLinearGamma = true;
 	// 초기값 0
 	BloodFieldTarget->ClearColor = FLinearColor::Transparent;
+	//BloodFieldTarget->Filter = TF_Nearest;
 	// 128 × 128 × 128, 복셀당 float 하나
 	BloodFieldTarget->Init(
 		Resolution.X,
@@ -95,6 +97,7 @@ void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
 	GroupData.PatternID = PatternIndex;
 	const UBloodPatternData* BloodPattern = Settings->BloodPatternData[PatternIndex].LoadSynchronous();
 	const TArray<FVector2D> PatternSample = BloodPattern->SampleUVs;
+	UE_LOG(LogTemp, Warning, TEXT("0~%d - %d index, %d"), Settings->BloodPatternData.Num(), PatternIndex, PatternSample.Num());
 	for (int i = 0; i < PatternSample.Num(); ++i)
 	{
 		FSplatGPUData SplatData;
@@ -103,6 +106,24 @@ void UBloodFieldSubSystem::RequestBloodSplat(FBloodBurstRequest Request)
 		if (CalculateSplatLocation(SplatData, Basis, Request, PatternSample[i]))
 		{
 			BloodSplatGroup.BloodSplats.Add(SplatData);
+
+			const FBloodPatternSettings& PatternSetting = Settings->BloodPatternSettings;
+			const float PatternSize = PatternSetting.SplatRadius * PatternSetting.GridSize;
+
+			const FVector Delta = FVector(SplatData.Location) - Request.WorldLocation;
+
+			const float ReconstructedU =
+				0.5f + FVector::DotProduct(Delta, Basis.Tangent) / PatternSize;
+
+			const float ReconstructedV =
+				0.5f + FVector::DotProduct(Delta, Basis.Bitangent) / PatternSize;
+
+			//UE_LOG(LogTemp, Warning,
+			//	TEXT("%d : Sample=(%.3f %.3f) Reconstructed=(%.3f %.3f)"),
+			//	i, SplatData.SampleUV.X, SplatData.SampleUV.Y,
+			//	ReconstructedU, ReconstructedV);
+
+			//DrawDebugPoint(GetWorld(), FVector(SplatData.Location), 15.f, FColor::Green, false, 20.f);
 		}
 	}
 	BloodSplatGroup.SplatGroupData = GroupData;
@@ -130,15 +151,14 @@ bool UBloodFieldSubSystem::CalculateSplatLocation(FSplatGPUData& Splat, const FS
 {
 	const UBloodFieldSettings* Settings = GetDefault<UBloodFieldSettings>();
 	const int32 GridSize = Settings->BloodPatternSettings.GridSize;
+	const float Radius = Settings->BloodPatternSettings.SplatRadius;
 
 	Splat.SampleUV = FVector2f(SampleUV);
 	FVector Center = Request.WorldLocation;
-	const float XOffset = Request.Radius * (SampleUV.X - 0.5) * GridSize;
-	const float YOffset = Request.Radius * (SampleUV.Y - 0.5) * GridSize;
+	const float XOffset = Radius * (SampleUV.X - 0.5) * GridSize;
+	const float YOffset = Radius * (SampleUV.Y - 0.5) * GridSize;
 	FVector Offset = Basis.Tangent * XOffset + Basis.Bitangent * YOffset;
 	FVector Location = Center + Offset;
-
-	//DrawDebugLine(GetWorld(), Center, Center + Basis.Normal * 100.f, FColor::Blue , false, 5.f, 0, 3.f);
 
 	FVector OriginalLoc = Location;
 
@@ -197,7 +217,7 @@ bool UBloodFieldSubSystem::CalculateSplatLocation(FSplatGPUData& Splat, const FS
 
 			if (!FinalResult.bBlockingHit) return false;
 
-			FSurfaceBasis RotateBasis;
+			FSurfaceBasis RotateBasis = Basis;
 			bool IsFound = TryWrapSharpEdge(Location, RotateBasis, Center, FinalResult.ImpactPoint, Offset, FinalResult.ImpactNormal, Basis.Normal);
 			if (!IsFound) return false;
 
@@ -293,17 +313,39 @@ void UBloodFieldSubSystem::FlushRequests()
 	Input.Radius = PatternSetting.SplatRadius;
 	const float PatternSize = PatternSetting.SplatRadius * PatternSetting.GridSize;
 	Input.PatternWorldSize = FVector2f(PatternSize, PatternSize);
+	UTexture2DArray* BloodPatternArray = Settings->BloodPatternArray.LoadSynchronous();
+	Input.BloodTextures = BloodPatternArray->GetResource()->GetTextureRHI();
 
 	for (int32 GroupIndex = 0; GroupIndex < SplatGroup.Num(); ++GroupIndex)
 	{
 		const auto& Group = SplatGroup[GroupIndex];
 		Input.GroupData.Add(Group.SplatGroupData);
+		int32 i = 0;
 		for (auto Splat : Group.BloodSplats)
 		{
+			
 			Splat.GroupIndex = static_cast<uint32>(GroupIndex);
 			Input.SplatsData.Add(Splat);
+			//const FVector3f VoxelSize =
+			//	FVector3f(FieldScale) / FVector3f(Resolution);
+
+			//const FVector3f UVW =
+			//	(Splat.Location - FVector3f(FieldOrigin))
+			//	/ FVector3f(FieldScale) + 0.5f;
+
+			//const FIntVector CenterVoxel(
+			//	FMath::FloorToInt(UVW.X * Resolution.X),
+			//	FMath::FloorToInt(UVW.Y * Resolution.Y),
+			//	FMath::FloorToInt(UVW.Z * Resolution.Z)
+			//);
+
+			//UE_LOG(LogTemp, Warning,
+			//	TEXT("%d : (%d, %d, %d)"),
+			//	i, CenterVoxel.X, CenterVoxel.Y, CenterVoxel.Z);
+			//++i;
 		}
 	}
+	//UE_LOG(LogTemp, Warning, TEXT("%f %f %f"), (FieldScale / FVector3f(Resolution)).X, (FieldScale / FVector3f(Resolution)).Y, (FieldScale / FVector3f(Resolution)).Z);
 	FBloodFieldShaderInterface::Dispatch(RT, Input);
 
 	SplatGroup.Empty();

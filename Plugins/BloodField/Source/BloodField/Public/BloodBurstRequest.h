@@ -17,9 +17,6 @@ struct FBloodBurstRequest
 
 	UPROPERTY()
 	FVector Direction = FVector::ForwardVector;
-
-	UPROPERTY()
-	float Radius = 50.f;
 };
 
 USTRUCT()

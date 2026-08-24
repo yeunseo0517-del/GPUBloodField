@@ -93,11 +93,10 @@ void FBloodFieldShaderInterface::AddBloodFieldPass(FRDGBuilder& GraphBuilder, FR
 	ResolveParameters->GroupBuffer = GraphBuilder.CreateSRV(GroupBuffer);
 	ResolveParameters->OutVolume = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(VolumeTexture));
 	ResolveParameters->ResolveTextureSRV = GraphBuilder.CreateSRV(ResolveTexture);
+	ResolveParameters->PatternTexture = Input.BloodTextures;
+	ResolveParameters->PatternSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 
 	FRDGTextureUAVRef VolumeUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(VolumeTexture));
-
-	// 디버그용: 기존 RT 값 싹 제거
-	//AddClearUAVPass(GraphBuilder, VolumeUAV, FLinearColor::Transparent);
 
 	const FIntVector ResolveGroupCount(
 		FMath::DivideAndRoundUp(Input.Resolution.X, 4),

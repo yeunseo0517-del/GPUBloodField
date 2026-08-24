@@ -33,6 +33,8 @@ struct FSplatGPUGroupData
 };
 StructuredBuffer<FSplatGPUGroupData> GroupBuffer;
 float2 PatternWorldSize;
+Texture2DArray PatternTexture;
+SamplerState PatternSampler;
 RWTexture3D<float4> OutVolume;
 
 [numthreads(64, 1, 1)]
@@ -75,15 +77,6 @@ void SelectionPassCS(uint3 DispatchThreadID : SV_DispatchThreadID)
 [numthreads(4, 4, 4)]
 void ResolvePassCS(uint3 DispatchThreadID : SV_DispatchThreadID)
 {
-    //if (any(DispatchThreadID >= uint3(Resolution)))
-    //    return;
-    //
-    //uint Packed = ResolveTextureSRV[DispatchThreadID];
-    //
-    //if (Packed != 0)
-    //    OutVolume[DispatchThreadID] = float4(1, 0, 0, 1);
-    //else
-    //    OutVolume[DispatchThreadID] = float4(0, 0, 0, 0);
     if (any(DispatchThreadID >= uint3(Resolution)))
         return;
     
@@ -100,13 +93,12 @@ void ResolvePassCS(uint3 DispatchThreadID : SV_DispatchThreadID)
     float UOffset = dot(Offset, SplatBuffer[SplatID].Tangent) / PatternWorldSize.x;
     float VOffset = dot(Offset, SplatBuffer[SplatID].Bitangent) / PatternWorldSize.y;
     float2 FinalUV = float2(Splat.SampleUV.x + UOffset, Splat.SampleUV.y + VOffset);
-    bool bOut = any(FinalUV < 0.0f) || any(FinalUV > 1.0f);
-    if (any(FinalUV < 0.0f) || any(FinalUV > 1.0f))
+
+    if (any(FinalUV < 0.0f) || any(FinalUV > 1.1f))
         return;
-    
-    uint QuantizedIntensity = Packed >> 16;
-    float Mask = QuantizedIntensity / 65535.0f;
+  
     // R = FinalUV.X, G = FinalUV.Y, B = PatternID, A = Valid/Mask
-    // OutVolume[DispatchThreadID] = bOut ? float4(1, 0, 0, 1) : float4(0, 1, 0, 1);
-    OutVolume[DispatchThreadID] = float4(FinalUV.x, FinalUV.y, GroupBuffer[GroupIndex].PatternID, Mask);
+    OutVolume[DispatchThreadID] = float4(FinalUV, GroupBuffer[GroupIndex].PatternID, 1.0f);
+    //OutVolume[DispatchThreadID] = float4(0, 0, 0, 1);
+
 }

@@ -147,7 +147,6 @@ void ABloodSurfaceResearchCharacter::MakeBlood()
 	Request.ImpactNormal = Hit.ImpactNormal;
 	Request.WorldLocation = Hit.ImpactPoint;
 	Request.Direction = (Hit.ImpactPoint - GetPawnViewLocation()).GetSafeNormal();
-	Request.Radius = 5.f;
 
 	BloodFieldSubsystem->RequestBloodSplat(Request);
 }
@@ -185,7 +184,7 @@ void ABloodSurfaceResearchCharacter::MakeBloodDecal()
 	UGameplayStatics::SpawnDecalAtLocation(
 		GetWorld(),
 		BloodDecalMaterial,
-		FVector(20.f, 20.f, 50.f),
+		FVector(40.f, 40.f, 50.f),
 		Hit.ImpactPoint,
 		(-Hit.ImpactNormal).Rotation(),
 		0.f

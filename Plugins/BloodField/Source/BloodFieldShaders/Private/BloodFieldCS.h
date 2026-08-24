@@ -43,6 +43,8 @@ class FBloodFieldResolveCS : public FGlobalShader
 		SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FSplatGPUGroupData>, GroupBuffer)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture3D<float4>, OutVolume)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture3D<uint>, ResolveTextureSRV)
+		SHADER_PARAMETER_TEXTURE(Texture2DArray, PatternTexture)
+		SHADER_PARAMETER_SAMPLER(SamplerState, PatternSampler)
 	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(

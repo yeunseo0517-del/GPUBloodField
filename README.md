@@ -279,6 +279,15 @@ Splat: 실제 표면 위치가 계산되어 월드 공간에 배치된 하나의
 
 동일 Voxel에 대한 동시 Write 충돌을 방지하기 위해 InterlockedMax를 사용하고 어떤 혈흔을 남길지 비교 기준인 Intensity와 식별용 SplatID를 하나의 uint로 Packing하여 Atomic 연산 한 번으로 남길 혈흔 선정과 ID 저장을 함께 처리했습니다.
 
+``` cpp
+uint QuantizedIntensity = (uint)(saturate(Intensity) * 65535.0);
+if (QuantizedIntensity == 0)
+    return;
+
+uint Packed = (QuantizedIntensity << 16) | SplatID;
+InterlockedMax(ResolveTextureUAV[TargetVoxel], Packed);
+```
+
 #### Pass 2 — UV Resolve
 
 Pass 1의 결과 Resolve Texture의 Splat ID로 위치 / 방향 / SampleUV / Pattern 정보를 다시 가져온 뒤, 해당 Voxel의 상대 위치를 계산해 최종 UV + Pattern ID를 Blood Field에 기록합니다.
@@ -295,6 +304,19 @@ Pass 2 : 최종 Splat 기준 최종 UV 계산
 Blood Field
     ↓
 Material Sampling
+```
+
+``` cpp
+uint SplatID = Packed & 0xFFFF;
+FSplatGPUData Splat = SplatBuffer[SplatID];
+
+float3 Offset = WorldPosition - Splat.Location;
+float UOffset = dot(Offset, Splat.Tangent) / PatternWorldSize.x;
+float VOffset = dot(Offset, Splat.Bitangent) / PatternWorldSize.y;
+float2 FinalUV = float2(Splat.SampleUV.x + UOffset, Splat.SampleUV.y + VOffset);
+
+// R = FinalUV.X, G = FinalUV.Y, B = PatternID, A = Valid/Mask
+OutVolume[DispatchThreadID] = float4(FinalUV, PatternID, 1.0f);
 ```
 
 ---
